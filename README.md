@@ -106,6 +106,23 @@ python hint_mask_generator_SAR2Opt_percentage.py \
 ```
 
 ---
+### 1.3 调整 hint 占比
+
+生成 hint 的占比由 `hint_mask_generator_SAR2Opt_percentage.py` 里的 `target_ratio` 控制，默认值为 `0.05`，表示生成的 hint mask 面积目标约为整张图像面积的 **5%**。
+
+如果想改变 color hint 的稀疏程度，可以在代码中找到 `hint_defaults` 里的这一行：
+
+```python
+target_ratio=0.05,
+```
+
+然后按需求修改：
+
+- `target_ratio=0.01`：约 1% 像素作为 hint，更稀疏。
+- `target_ratio=0.03`：约 3% 像素作为 hint。
+- `target_ratio=0.10`：约 10% 像素作为 hint，更密集。
+
+修改后重新运行 `hint_mask_generator_SAR2Opt_percentage.py` 即可生成对应占比的 color hint。脚本会在 `summary.csv` 中记录每张图实际生成的 `hint_mask_ratio`，可用于检查实际 hint 占比。
 
 ## Step 2：使用 Color Hint 训练 main_jit
 
