@@ -197,6 +197,24 @@ CUDA_VISIBLE_DEVICES=<TRAIN_GPU_IDS> torchrun \
 - `--hint_loss_weight 0`：hint 像素额外 loss 权重，此处设置为 0。
 - `--enabled_losses ab perc`：启用 Lab ab loss 和 perceptual loss。
 
+### 2.1 不同 loss 消融
+
+做不同 loss 的消融实验时，不需要改代码，只需要修改训练或测试命令中的 `--enabled_losses`：
+
+```bash
+# 只使用 perceptual loss
+--enabled_losses perc
+
+# 只使用 Lab ab loss
+--enabled_losses ab
+
+# 同时使用 Lab ab loss 和 perceptual loss
+--enabled_losses ab perc
+```
+
+为了公平比较不同 loss 的效果，建议保持数据划分、color hint、模型结构、checkpoint 初始化、训练轮数和其他超参数不变，只切换 `--enabled_losses` 的取值。
+
+
 ---
 
 ## Step 3：测试 / 推理
