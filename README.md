@@ -1,8 +1,8 @@
 # ColorS2O: SAR-to-Optical Image Translation with Color Hints
 
-本项目用于 **SAR 图像到光学图像（SAR-to-Optical）翻译**。推荐流程分两步：
+本项目用于 **SAR 图像到光学图像（SAR-to-Optical）翻译**。推荐流程如下：
 
-1. 使用 `hint_mask_generator_SAR2Opt_percentage.py` 从光学图像中生成 sparse color hint。
+1. 使用 `hint_mask_generator_SAR2Opt_stripe.py` 从光学图像中生成线性的色条（stripe）color hint，用于消融实验。
 2. 将生成的 color hint 路径传给 `main_jit.py`，进行训练或带 hint 的测试/推理。
 
 > README 中所有路径均使用占位符表示，请替换为你自己机器上的实际路径，避免在命令中写死个人目录。
@@ -32,7 +32,7 @@ trainB/0001.png
 
 ## 环境准备
 
-请先安装项目依赖，并确保 PyTorch、CUDA、SAM2 相关依赖可用。`hint_mask_generator_SAR2Opt_percentage.py` 会调用 SAM2，因此还需要准备：
+请先安装项目依赖，并确保 PyTorch、CUDA、SAM2 相关依赖可用。`hint_mask_generator_SAR2Opt_stripe.py` 会调用 SAM2，因此还需要准备：
 
 - `<SAM2_CHECKPOINT>`：SAM2 checkpoint 文件路径，例如 `sam2.1_hiera_large.pt`。
 - `<SAM2_MODEL_CFG>`：SAM2 配置文件路径，例如 `configs/sam2.1/sam2.1_hiera_l.yaml`。
@@ -41,12 +41,12 @@ trainB/0001.png
 
 ## Step 1：生成 Color Hint
 
-`hint_mask_generator_SAR2Opt_percentage.py` 会读取光学图像，利用 SAM2 生成区域 mask，再输出 sparse color hint。输出目录中主要包含：
+`hint_mask_generator_SAR2Opt_stripe.py` 会读取光学图像，利用 SAM2 生成区域 mask，再在线性 stripe 区域上保留/填充颜色，输出用于消融实验的线性色条 color hint。输出目录中主要包含：
 
 ```text
 <HINT_OUTPUT_DIR>/
 ├── color_hint/          # 直接保留 hint mask 位置原始颜色，其余为黑色
-├── color_hint_by_dots/  # 使用每个 dot 区域的主色填充，通常作为训练/测试 hint 输入
+├── color_hint_by_dots/  # 使用每个 stripe 区域的主色填充，通常作为训练/测试 hint 输入
 ├── hint_masks/          # 每张图的 hint mask，npz 格式
 ├── label_map/           # SAM2 分割 label map
 ├── label_overlay/       # 分割可视化结果
@@ -56,7 +56,7 @@ trainB/0001.png
 ### 1.1 为训练集生成 hint
 
 ```bash
-python hint_mask_generator_SAR2Opt_percentage.py \
+python hint_mask_generator_SAR2Opt_stripe.py \
   --input "<DATA_ROOT>/trainB" \
   --sam2_checkpoint "<SAM2_CHECKPOINT>" \
   --model_cfg "<SAM2_MODEL_CFG>" \
@@ -80,16 +80,17 @@ python hint_mask_generator_SAR2Opt_percentage.py \
 <TRAIN_HINT_OUTPUT_DIR>/color_hint_by_dots
 ```
 
-如果你想使用原始 sparse color hint，也可以改用：
+如果你想使用 stripe 区域的原始颜色，也可以改用：
 
 ```text
 <TRAIN_HINT_OUTPUT_DIR>/color_hint
 ```
 
+
 ### 1.2 为测试集生成 hint
 
 ```bash
-python hint_mask_generator_SAR2Opt_percentage.py \
+python hint_mask_generator_SAR2Opt_stripe.py \
   --input "<DATA_ROOT>/testB" \
   --sam2_checkpoint "<SAM2_CHECKPOINT>" \
   --model_cfg "<SAM2_MODEL_CFG>" \
@@ -201,7 +202,7 @@ CUDA_VISIBLE_DEVICES=<TEST_GPU_IDS> torchrun \
 
 ```bash
 # 1) 生成训练集 hint
-python hint_mask_generator_SAR2Opt_percentage.py \
+python hint_mask_generator_SAR2Opt_stripe.py \
   --input "<DATA_ROOT>/trainB" \
   --sam2_checkpoint "<SAM2_CHECKPOINT>" \
   --model_cfg "<SAM2_MODEL_CFG>" \
@@ -211,7 +212,7 @@ python hint_mask_generator_SAR2Opt_percentage.py \
   --summary-csv "<TRAIN_HINT_OUTPUT_DIR>/summary.csv"
 
 # 2) 生成测试集 hint
-python hint_mask_generator_SAR2Opt_percentage.py \
+python hint_mask_generator_SAR2Opt_stripe.py \
   --input "<DATA_ROOT>/testB" \
   --sam2_checkpoint "<SAM2_CHECKPOINT>" \
   --model_cfg "<SAM2_MODEL_CFG>" \
