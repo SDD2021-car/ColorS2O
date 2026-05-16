@@ -124,6 +124,29 @@ target_ratio=0.05,
 
 修改后重新运行 `hint_mask_generator_SAR2Opt_percentage.py` 即可生成对应占比的 color hint。脚本会在 `summary.csv` 中记录每张图实际生成的 `hint_mask_ratio`，可用于检查实际 hint 占比。
 
+### 1.4 验证 dominance-checked rule 的效果
+
+`hint_mask_generator_SAR2Opt_percentage.py` 还会用 `histogram_threshold` 控制 dot 区域的颜色主导性筛选（dominance check）。当前默认设置为：
+
+```python
+histogram_threshold=0.6,
+```
+
+含义是：只有当候选 dot 内最主要颜色 bin 的占比达到约 60% 时，该 dot 才会被保留为有效 hint。这样可以过滤掉颜色混杂、主导颜色不明显的 hint 点。
+
+如果需要验证 **dominance-checked rule** 的效果，可以将该参数改为：
+
+```python
+histogram_threshold=0,
+```
+
+此时基本不再按颜色主导性过滤候选 dot，相当于关闭 dominance check。建议分别生成两组 hint 并对比：
+
+1. `histogram_threshold=0.6`：开启 dominance check。
+2. `histogram_threshold=0`：关闭 dominance check，用作 ablation。
+
+为了公平对比，建议保持 `target_ratio`、`rng_seed`、输入数据、SAM2 checkpoint/config 和训练/测试命令不变，仅改变 `histogram_threshold`，然后比较两组 hint 的可视化结果、`summary.csv` 中的 `hint_mask_ratio` 以及最终训练/测试指标。
+
 ## Step 2：使用 Color Hint 训练 main_jit
 
 生成训练集 color hint 后，运行 `main_jit.py` 进行训练。
