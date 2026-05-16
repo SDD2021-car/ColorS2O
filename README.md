@@ -147,6 +147,24 @@ histogram_threshold=0,
 
 为了公平对比，建议保持 `target_ratio`、`rng_seed`、输入数据、SAM2 checkpoint/config 和训练/测试命令不变，仅改变 `histogram_threshold`，然后比较两组 hint 的可视化结果、`summary.csv` 中的 `hint_mask_ratio` 以及最终训练/测试指标。
 
+
+### 1.5 无 MGSE 消融模式
+
+默认情况下，`denoiser.py` 使用带 MGSE 的模型实现：
+
+```python
+from model_jit_mask_guided_embed import JiT_models
+```
+
+如果需要做 **without MGSE** 的消融实验，可以将这一行替换为：
+
+```python
+from model_jit import JiT_models
+```
+
+替换后再按上面的训练/测试命令运行，即可使用不含 MGSE 的模型版本。为了公平比较 MGSE 的效果，建议保持数据划分、color hint、checkpoint 初始化、训练超参数和测试命令一致，只切换该 import。
+
+
 ## Step 2：使用 Color Hint 训练 main_jit
 
 生成训练集 color hint 后，运行 `main_jit.py` 进行训练。
