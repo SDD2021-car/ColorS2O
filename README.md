@@ -214,7 +214,28 @@ CUDA_VISIBLE_DEVICES=<TRAIN_GPU_IDS> torchrun \
 
 为了公平比较不同 loss 的效果，建议保持数据划分、color hint、模型结构、checkpoint 初始化、训练轮数和其他超参数不变，只切换 `--enabled_losses` 的取值。
 
+### 2.2 调整 loss 引入顺序
 
+每个 loss 的引入顺序可以通过对应的 `t0` 参数控制，不需要改代码，只需要在运行命令中增加或修改参数：
+
+```bash
+# 控制 Lab ab loss 的引入位置，默认值为 0.75
+--lambda_ab_t0 0.75
+
+# 控制 perceptual loss 的引入位置，默认值为 0.55
+--lambda_perc_t0 0.55
+```
+
+`t0` 越小，该 loss 在 t schedule 中越早开始起作用；`t0` 越大，该 loss 越晚引入。默认设置下 `lambda_perc_t0=0.55` 小于 `lambda_ab_t0=0.75`，因此 perceptual loss 会比 Lab ab loss 更早引入。
+
+例如，如果希望 Lab ab loss 更早、perceptual loss 更晚，可以在训练命令中加入：
+
+```bash
+--lambda_ab_t0 0.50 \
+--lambda_perc_t0 0.75
+```
+
+为了公平比较不同 loss 引入顺序的效果，建议保持 `--enabled_losses`、数据划分、color hint、模型结构、训练轮数和其他超参数不变，只调整 `--lambda_ab_t0` 与 `--lambda_perc_t0`。
 ---
 
 ## Step 3：测试 / 推理
