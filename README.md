@@ -29,6 +29,7 @@ XX/
 ├── trainA/   # SAR training images
 ├── trainB/   # Optical training images
 └── testA/    # SAR testing images
+└── testB/    # OPT testing images
 ```
 
 训练时需要同时提供 `trainA` 和 `trainB`；测试生成时只需要提供 `testA`。
