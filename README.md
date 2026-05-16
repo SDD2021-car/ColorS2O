@@ -236,6 +236,8 @@ CUDA_VISIBLE_DEVICES=<TRAIN_GPU_IDS> torchrun \
 ```
 
 为了公平比较不同 loss 引入顺序的效果，建议保持 `--enabled_losses`、数据划分、color hint、模型结构、训练轮数和其他超参数不变，只调整 `--lambda_ab_t0` 与 `--lambda_perc_t0`。
+
+
 ---
 
 ## Step 3：测试 / 推理
