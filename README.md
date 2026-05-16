@@ -1,180 +1,96 @@
-# Just image Transformer (JiT) for SAR-to-Optical Image Translation
+# ColorS2O：无 Color Hint 消融实验
 
-## Train：
+本仓库用于运行 **SAR-to-Optical Image Translation** 的无 color hint 消融实验（ablation）。该实验不启用 color hint 相关输入或推理参数，仅使用 SAR 图像作为输入，并通过 `main_jit.py` 进行训练与生成测试。
 
-CUDA_VISIBLE_DEVICES=7 torchrun --nproc_per_node=1 main_jit.py
+## 实验说明
 
-CUDA_VISIBLE_DEVICES=7 torchrun --nproc_per_node=1 --master-port=29506 main_jit.py \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT/round1" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB" \
-  --img_size 512
+- **实验目的**：验证不使用 color hint 时模型在 SAR-to-Optical 转换任务上的表现。
+- **训练脚本**：`main_jit.py`
+- **默认模型**：`JiT-B/8`（如需修改，可通过 `--model` 指定）
+- **图像尺寸**：`512`
+- **启用损失项**：`ab perc`
+- **数据目录约定**：
+  - `trainA`：SAR 训练图像
+  - `trainB`：Optical 训练图像
+  - `testA`：SAR 测试图像
 
-### Train with different lr:
+> 下面命令中的 `XX` 需要替换为实际的 GPU 编号、端口号、数据集路径、checkpoint 路径或输出路径。
 
-CUDA_VISIBLE_DEVICES=6 torchrun --nproc_per_node=1 --master_port=29505 main_jit.py \
-  --blr 1.6e-3 \
-  --output_dir /NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/lr5em5
+## 环境准备
 
-### Train on GF3:
+建议在已安装 PyTorch、torchvision、TensorBoard 等依赖的 Python 环境中运行。启动分布式训练/测试时使用 `torchrun`。
 
-CUDA_VISIBLE_DEVICES=6 torchrun --nproc_per_node=1 --master-port=29506 main_jit.py --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/GF3" --sar_train_path="/NAS_data/yjy/GF3_High_Res/trainA" --opt_train_path="/NAS_data/yjy/GF3_High_Res/trainB" --sar_test_path="/NAS_data/yjy/GF3_High_Res/testA" --opt_test_path="/NAS_data/yjy/GF3_High_Res/testB" --img_size=256
+## 数据准备
 
-CUDA_VISIBLE_DEVICES=3 torchrun --nproc_per_node=1 --master_port=29502 main_jit.py \
-  --sar_train_path "/NAS_data/yjy/GF3_High_Res/trainA" \
-  --opt_train_path "/NAS_data/yjy/GF3_High_Res/trainB" \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/GF3/caJiT_CP/round2_inference_with_cp" \
-  --img_size 256 \
-  --hint_dropout_prob 0.5 \
-  --hint_max_ratio 0.05 \
-  --hint_color_thresh 0.1 \
-  --hint_num_regions 4 \
-  --hint_loss_weight 2.0
+请按如下结构组织数据集：
 
-### Train on SAR2Opt:
+```text
+XX/
+├── trainA/   # SAR training images
+├── trainB/   # Optical training images
+└── testA/    # SAR testing images
+```
 
-CUDA_VISIBLE_DEVICES=1,4 torchrun --nproc_per_node=2 --master-port=29509 main_jit.py \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT_CP/round3" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB" \
+训练时需要同时提供 `trainA` 和 `trainB`；测试生成时只需要提供 `testA`。
+
+## 训练
+
+使用 2 张 GPU 进行无 color hint 消融训练：
+
+```bash
+CUDA_VISIBLE_DEVICES=XX torchrun \
+  --nproc_per_node=2 \
+  --master-port=XX \
+  main_jit.py \
+  --output_dir "XX" \
+  --sar_train_path "XX/trainA" \
+  --opt_train_path "XX/trainB" \
   --img_size 512 \
-  --hint_dropout_prob 0.5 \
-  --hint_max_ratio 0.05 \
-  --hint_color_thresh 0.1 \
-  --hint_num_regions 4 \
-  --hint_loss_weight 2.0
+  --enabled_losses ab perc
+```
 
-CUDA_VISIBLE_DEVICES=2,3,5,7 torchrun --nproc_per_node=4 --master-port=29509 main_jit.py \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT_CP/round3" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB" \
+### 参数说明
+
+- `CUDA_VISIBLE_DEVICES=XX`：指定可见 GPU，例如 `0,1`。
+- `--nproc_per_node=2`：单机启动 2 个进程，对应 2 张 GPU。
+- `--master-port=XX`：分布式训练端口，请选择未被占用的端口。
+- `--output_dir "XX"`：训练日志与 checkpoint 保存目录。
+- `--sar_train_path "XX/trainA"`：SAR 训练集目录。
+- `--opt_train_path "XX/trainB"`：Optical 训练集目录。
+- `--img_size 512`：输入图像尺寸。
+- `--enabled_losses ab perc`：仅启用 `ab` 与 perceptual loss，用于该消融配置。
+
+## 测试 / 生成结果
+
+使用训练好的 checkpoint 进行生成测试，并保留输出图像：
+
+```bash
+CUDA_VISIBLE_DEVICES=XX torchrun \
+  --nproc_per_node=2 \
+  --master-port=XX \
+  main_jit.py \
+  --resume "XX" \
+  --sar_test_path "XX/testA" \
   --img_size 512 \
-  --hint_dropout_prob 0.5 \
-  --hint_max_ratio 0.05 \
-  --hint_color_thresh 0.1 \
-  --hint_num_regions 4 \
-  --hint_loss_weight 2.0 \
-  --batch_size 2
-
-CUDA_VISIBLE_DEVICES=7 torchrun --nproc_per_node=1 --master-port=29505 main_jit.py \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT_CP/round4/noLoss_noHintsDropout_stripe_concat" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB" \
-  --img_size 512 \
-  --hint_dropout_prob 0 \
-  --hint_loss_weight 0 \
-  --hint_sampling_mode stripe \
-  --hint_on_gpu
-
-CUDA_VISIBLE_DEVICES=6 torchrun --nproc_per_node=1 --master-port=29504 main_jit.py \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT_CP/round4/noLoss_noHintsDropout_dot_concat" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB" \
-  --img_size 512 \
-  --hint_dropout_prob 0 \
-  --hint_loss_weight 0 \
-  --hint_sampling_mode dot \
-  --hint_on_gpu
-
-
-### Train on scene:
-
-CUDA_VISIBLE_DEVICES=5 torchrun --nproc_per_node=1 --master_port=29505 main_jit.py \
-  --sar_train_path "/data/hjf/Dataset/SEN12_Scene/trainA" \
-  --opt_train_path "/data/hjf/Dataset/SEN12_Scene/trainB" \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/scene/caJiT_CP/round3_inference_with_cp" \
-  --img_size 256 \
-  --hint_dropout_prob 0.5 \
-  --hint_max_ratio 0.05 \
-  --hint_color_thresh 0.1 \
-  --hint_num_regions 4 \
-  --hint_loss_weight 2.0
-
-## Train with model JiT-L/16
-
-CUDA_VISIBLE_DEVICES=5 torchrun --nproc_per_node=1 --master-port=29508 main_jit.py \
-  --model JiT-L/16 \
-  --img_size 512 \
-  --batch_size 4 \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT/JiT-L16" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB"
-
-
-## Train with model JiT-H/16
-
-CUDA_VISIBLE_DEVICES=6 torchrun --nproc_per_node=1 --master-port=29507 main_jit.py \
-  --model JiT-H/16 \
-  --img_size 512 \
-  --batch_size 2 \
-  --output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT/JiT-H16" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB"
-
-
-## Inference：
-
-### Inference on SAR2Opt：
-
-CUDA_VISIBLE_DEVICES=7 torchrun --nproc_per_node=1 --master_port=29503 main_jit.py --evaluate_gen --resume /NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt --sar_test_path /NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/testA --output_dir /NAS_data/hjf/JiTcolor/outputs/SAR2Opt/round1 --img_size 512 --gen_bsz 8 --keep_outputs
-
-CUDA_VISIBLE_DEVICES=5 torchrun --nproc_per_node=1 --master-port=29508 main_jit.py \
---model JiT-L/16 \
---img_size 512 \
---batch_size 4 \
---output_dir "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/controlJiT/JiT-L16" \
---sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainA" \
---opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/trainB"
-
-CUDA_VISIBLE_DEVICES=3 torchrun --nproc_per_node=1 --master_port=29503 main_jit.py \
-  --evaluate_gen \
-  --resume "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT_CP/round1" \
-  --sar_test_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/testA" \
-  --opt_test_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/testB" \
-  --output_dir "/NAS_data/hjf/JiTcolor/outputs/caJiT/round2_inference_with_cp" \
-  --img_size 512 \
+  --enabled_losses ab perc \
+  --evaluate_gen True \
   --gen_bsz 8 \
-  --keep_outputs \
-  --use_hint_infer \
-  --hint_dropout_prob 0.5 \
-  --hint_max_ratio 0.05 \
-  --hint_color_thresh 0.1 \
-  --hint_num_regions 4
+  --keep_outputs True \
+  --output_dir "XX"
+```
 
-CUDA_VISIBLE_DEVICES=6 torchrun --nproc_per_node=1 --master-port=29509 main_jit.py \
-  --evaluate_gen \
-  --gen_bsz 8 \
-  --keep_outputs \
-  --resume "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT_CP/round3" \
-  --output_dir "/NAS_data/hjf/JiTcolor/outputs/SAR2Opt/caJiT_CP/round3" \
-  --sar_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/testA" \
-  --opt_train_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/testB" \
-  --img_size 512 \
-  --use_hint_infer \
-  --hint_dropout_prob 0.5 \
-  --hint_max_ratio 0.05 \
-  --hint_color_thresh 0.1 \
-  --hint_num_regions 4 
+### 参数说明
 
-### Inference on GF3：
+- `--resume "XX"`：待测试的 checkpoint 目录或 checkpoint 路径。
+- `--sar_test_path "XX/testA"`：SAR 测试集目录。
+- `--evaluate_gen True`：启用生成测试模式。
+- `--gen_bsz 8`：生成阶段 batch size。
+- `--keep_outputs True`：保留生成结果。
+- `--output_dir "XX"`：测试日志与生成结果保存目录。
 
-CUDA_VISIBLE_DEVICES=7 torchrun --nproc_per_node=1 --master_port=29504 main_jit.py --evaluate_gen --resume /NAS_data/hjf/JiTcolor/checkpoints/GF3 --sar_test_path /NAS_data/yjy/GF3_High_Res/testA --output_dir /NAS_data/hjf/JiTcolor/outputs/GF3/round1 --img_size 256 --gen_bsz 8 --keep_outputs
+## 注意事项
 
-CUDA_VISIBLE_DEVICES=3 torchrun --nproc_per_node=1 --master_port=29503 main_jit.py \
-  --evaluate_gen \
-  --resume "/NAS_data/hjf/JiTcolor/checkpoints/SAR2Opt/caJiT_CP/round1" \
-  --sar_test_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/testA" \
-  --opt_test_path "/NAS_data/yjy/Parallel-GAN-main/Parallel-GAN-main/datasets/sar2opt/testB" \
-  --output_dir "/NAS_data/hjf/JiTcolor/outputs/caJiT/round2_inference_with_cp" \
-  --img_size 512 \
-  --gen_bsz 8 \
-  --keep_outputs \
-  --use_hint_infer \
-  --hint_dropout_prob 0.5 \
-  --hint_max_ratio 0.05 \
-  --hint_color_thresh 0.1 \
-  --hint_num_regions 4
-
-### Inference on SEN-SCENE：
-
-CUDA_VISIBLE_DEVICES=7 torchrun --nproc_per_node=1 --master_port=29505 main_jit.py --evaluate_gen --resume /NAS_data/hjf/JiTcolor/checkpoints/scene --sar_test_path /data/hjf/Dataset/SEN12_Scene/testA --output_dir /NAS_data/hjf/JiTcolor/outputs/scene/round1 --img_size 256 --gen_bsz 8 --keep_outputs
+1. 本消融实验不需要添加 `--use_hint_infer`、`--hint_dropout_prob`、`--hint_max_ratio`、`--hint_color_thresh`、`--hint_num_regions` 或其他 color hint 相关参数。
+2. 如果只使用 1 张 GPU，请将 `CUDA_VISIBLE_DEVICES` 改为单个 GPU 编号，并将 `--nproc_per_node` 改为 `1`。
+3. 如果端口冲突，请更换 `--master-port` 的值。
+4. `--output_dir` 建议训练和测试分别设置不同目录，避免覆盖日志或生成结果。
