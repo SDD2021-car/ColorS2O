@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from kornia.color import rgb_to_lab
 from kornia.metrics import ssim
-from model_jit import JiT_models
+from model_jit_mask_guided_embed import JiT_models
 
 
 class Denoiser(nn.Module):

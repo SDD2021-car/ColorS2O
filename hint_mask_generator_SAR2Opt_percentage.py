@@ -304,103 +304,6 @@ def dot_mask_from_center(center_yx, radius, shape):
     return mask
 
 
-# def build_hint_masks_from_label_map(
-#     label_map_u16,
-#     target_ratio=0.05,
-#     min_border_distance=5,
-#     min_point_distance=10,
-#     dot_radius=6,
-#     dot_radius_range=None,
-#     min_delta_area=10,
-#     rng_seed=0,
-#     image=None,
-#     histogram_threshold=0.7,
-#     histogram_bins=16,
-# ):
-#     rng = np.random.default_rng(rng_seed)
-#     masks, label_ids = label_map_to_masks(label_map_u16)
-#     allocations, target_total = compute_mask_allocations(
-#         masks, target_ratio=target_ratio
-#     )
-#
-#     hint_masks = [np.zeros_like(label_map_u16, dtype=bool) for _ in masks]
-#     hint_all = np.zeros_like(label_map_u16, dtype=bool)
-#     area_now = 0
-#     candidate_pools = []
-#     pool_indices = []
-#
-#     for mask in masks:
-#         candidates = build_candidate_centers(
-#             mask,
-#             min_border_distance=min_border_distance,
-#             min_point_distance=min_point_distance,
-#             rng=rng,
-#         )
-#         candidate_pools.append(candidates)
-#         pool_indices.append(0)
-#
-#     def passes_histogram_threshold(dot_mask):
-#         if image is None:
-#             return True
-#         peak_ratio = histogram_peak_ratio(image, dot_mask, bins=histogram_bins)
-#         return peak_ratio >= histogram_threshold
-#
-#     for idx, (mask, allocation) in enumerate(zip(masks, allocations)):
-#         hint_area = 0
-#         while hint_area < allocation and pool_indices[idx] < len(candidate_pools[idx]):
-#             center = candidate_pools[idx][pool_indices[idx]]
-#             pool_indices[idx] += 1
-#             radius = dot_radius
-#             if dot_radius_range is not None:
-#                 radius = rng.uniform(dot_radius_range[0], dot_radius_range[1])
-#             raw_dot = dot_mask_from_center(center, radius, mask.shape)
-#             if np.any(raw_dot & ~mask):
-#                 continue
-#             dot = raw_dot & mask
-#             if not passes_histogram_threshold(dot):
-#                 continue
-#             delta_mask = np.logical_and(dot, ~hint_masks[idx])
-#             delta = int(delta_mask.sum())
-#             if delta < min_delta_area:
-#                 continue
-#             hint_masks[idx] |= dot
-#             hint_area += delta
-#
-#     while area_now < target_total:
-#         best_idx = None
-#         best_delta = 0
-#         for i, mask in enumerate(masks):
-#             if pool_indices[i] >= len(candidate_pools[i]):
-#                 continue
-#             center = candidate_pools[i][pool_indices[i]]
-#             radius = dot_radius
-#             if dot_radius_range is not None:
-#                 radius = rng.uniform(dot_radius_range[0], dot_radius_range[1])
-#             raw_dot = dot_mask_from_center(center, radius, mask.shape)
-#             if np.any(raw_dot & ~mask):
-#                 continue
-#             dot = raw_dot & mask
-#             if not passes_histogram_threshold(dot):
-#                 continue
-#             delta = int(np.logical_and(dot, ~hint_masks[i]).sum())
-#             if delta > best_delta:
-#                 best_delta = delta
-#                 best_idx = i
-#         if best_idx is None or best_delta < min_delta_area:
-#             break
-#         center = candidate_pools[best_idx][pool_indices[best_idx]]
-#         pool_indices[best_idx] += 1
-#         raw_dot = dot_mask_from_center(center, dot_radius, masks[best_idx].shape)
-#         if np.any(raw_dot & ~masks[best_idx]):
-#             continue
-#         dot = raw_dot & masks[best_idx]
-#         if not passes_histogram_threshold(dot):
-#             continue
-#         hint_masks[best_idx] |= dot
-#
-#     hint_all |= dot
-#     area_now += best_delta
-#     return hint_masks, hint_all, label_ids, allocations, target_total
 def build_hint_masks_from_label_map(
     label_map_u16,
     target_ratio=0.01,
@@ -612,7 +515,7 @@ def generate_hint_masks(
     label_map = remove_speckles_by_cc(label_map, min_cc_area=300)
 
     hint_defaults = dict(
-        target_ratio=0.03,
+        target_ratio=0.05,
         min_border_distance=2,
         min_point_distance=10,
         dot_radius=6,
@@ -798,7 +701,7 @@ def main():
     )
     parser.add_argument(
         "--summary-csv",
-        default="hint_outputs_test_percentage0.03/summary.csv",
+        default="hint_outputs_test_percentage0.05/summary.csv",
         help="Optional path to save the per-image hint ratio table as CSV.",
     )
     parser.add_argument(
